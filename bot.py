@@ -2,7 +2,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
 
 # Function to fetch APK download link
 def fetch_apk(apk_name: str) -> str:
@@ -46,7 +46,7 @@ def main():
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_apk_request))
+    dp.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_apk_request))
 
     updater.start_polling()
     updater.idle()
