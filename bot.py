@@ -2,7 +2,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # Function to fetch APK download link
 def fetch_apk(apk_name: str) -> str:
@@ -26,30 +26,28 @@ def fetch_apk(apk_name: str) -> str:
         return "Error: APK not found."
 
 # Telegram bot handlers
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("Welcome! Send me the name of the APK, and I'll fetch it for you.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Welcome! Send me the name of the APK, and I'll fetch it for you.")
 
-def handle_apk_request(update: Update, context: CallbackContext):
+async def handle_apk_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
     apk_name = update.message.text
-    update.message.reply_text(f"Searching for APK: {apk_name}...")
+    await update.message.reply_text(f"Searching for APK: {apk_name}...")
     
     download_link = fetch_apk(apk_name)
     if "Error" in download_link:
-        update.message.reply_text(download_link)
+        await update.message.reply_text(download_link)
     else:
-        update.message.reply_text(f"Download your APK here: {download_link}")
+        await update.message.reply_text(f"Download your APK here: {download_link}")
 
 # Main function to start the bot
 def main():
     TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Add your bot token here
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    application = Application.builder().token(TOKEN).build()
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_apk_request))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_apk_request))
 
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
 if __name__ == "__main__":
     main()
