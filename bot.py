@@ -1,65 +1,74 @@
-import os
 import requests
-from google_play_scraper import search
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
-# Function to get package name using Google Play Scraper
-def get_package_name(app_name: str) -> str:
-    results = search(app_name, lang="en", country="us")
-    if results:
-        return results[0]['appId']
-    return None
+# Function to fetch APK from Aptoide
+def fetch_from_aptoide(app_name: str) -> str:
+    """
+    Fetch APK download link from Aptoide.
 
-# Function to fetch APK download link from APKCombo
-def fetch_from_apkcombo(package_name: str) -> str:
-    base_url = "https://apkcombo.com/downloader/apk/"
-    params = {
-        "package": package_name,
-        "lang": "en",
-        "dpi": "nodpi"
-    }
+    :param app_name: Name of the app to search for
+    :return: APK download link or error message
+    """
+    # Aptoide API endpoint
+    api_url = f"https://ws75.aptoide.com/api/7/app/search?query={app_name}&lang=en"
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
+    try:
+        # Make the request to the Aptoide API
+        response = requests.get(api_url)
+        if response.status_code != 200:
+            return "Error: Unable to access Aptoide."
 
-    response = requests.get(base_url, headers=headers, params=params)
-    if response.status_code != 200:
-        return "Error: Unable to access APKCombo."
+        # Parse the JSON response
+        data = response.json()
 
-    if "Download APK" in response.text:
-        return response.url
-    else:
-        return "Error: APK not found."
+        # Check if apps are found
+        if "datalist" in data and "list" in data["datalist"] and len(data["datalist"]["list"]) > 0:
+            # Get the first app in the results
+            app = data["datalist"]["list"][0]
+            app_name = app["name"]
+            apk_link = app["file"]["path"]  # Direct APK download link
 
-# Telegram bot handlers
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Welcome! Send me the name of the APK, and I'll fetch it for you.")
+            return f"✅ Found '{app_name}'!\nDownload your APK here: {apk_link}"
+        else:
+            return "Error: App not found on Aptoide."
+    except Exception as e:
+        return f"Error: Failed to fetch data from Aptoide. Details: {str(e)}"
 
-async def handle_apk_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    apk_name = update.message.text
-    await update.message.reply_text(f"Searching for APK: {apk_name}...")
+# Start command handler
+def start(update: Update, context: CallbackContext) -> None:
+    update.message.reply_text(
+        "Welcome to the APK Bot!\n"
+        "Send me the name of any app, and I'll fetch its APK link for you."
+    )
 
-    # Step 1: Get package name
-    package_name = get_package_name(apk_name)
-    if not package_name:
-        await update.message.reply_text("Error: Could not find package name.")
-        return
+# Handle app name messages
+def send_apk(update: Update, context: CallbackContext) -> None:
+    app_name = update.message.text.strip()
 
-    # Step 2: Fetch APK download link
-    download_link = fetch_from_apkcombo(package_name)
-    await update.message.reply_text(download_link)
+    # Fetch from Aptoide
+    aptoide_result = fetch_from_aptoide(app_name)
+
+    # Respond with the result
+    update.message.reply_text(aptoide_result)
 
 # Main function to start the bot
-def main():
-    TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Add your Telegram bot token here
-    application = Application.builder().token(TOKEN).build()
+def main() -> None:
+    # Your bot token (replace with your own)
+    BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_apk_request))
+    # Set up the Updater and Dispatcher
+    updater = Updater(BOT_TOKEN, use_context=True)
+    dispatcher = updater.dispatcher
 
-    application.run_polling()
+    # Add command and message handlers
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, send_apk))
 
+    # Start the bot
+    updater.start_polling()
+    updater.idle()
+
+# Run the bot
 if __name__ == "__main__":
     main()
