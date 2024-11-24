@@ -12,18 +12,24 @@ def fetch_from_apkpure(apk_name: str) -> str:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    
+
     response = requests.get(search_url, headers=headers)
     if response.status_code != 200:
         return None
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    link = soup.find('a', {'class': 'dd'})  # APKPure link to APK page
+
+    # Find the first search result link
+    link = soup.find('a', class_="more-down")  # Updated selector
     if link:
         apk_page_url = "https://apkpure.com" + link['href']
+
+        # Fetch the APK page
         apk_response = requests.get(apk_page_url, headers=headers)
         apk_soup = BeautifulSoup(apk_response.content, 'html.parser')
-        download_button = apk_soup.find('a', {'class': 'download-start-btn'})
+
+        # Find the download button
+        download_button = apk_soup.find('a', id="download_link")  # Updated selector
         if download_button and 'href' in download_button.attrs:
             return download_button['href']
     return None
@@ -36,18 +42,24 @@ def fetch_from_apkmirror(apk_name: str) -> str:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
-    
+
     response = requests.get(search_url, headers=headers)
     if response.status_code != 200:
         return None
 
     soup = BeautifulSoup(response.content, 'html.parser')
-    link = soup.find('a', {'class': 'fontBlack'})  # APKMirror link to APK page
+
+    # Find the first search result link
+    link = soup.find('a', class_="fontBlack")  # Updated selector
     if link:
         apk_page_url = "https://www.apkmirror.com" + link['href']
+
+        # Fetch the APK page
         apk_response = requests.get(apk_page_url, headers=headers)
         apk_soup = BeautifulSoup(apk_response.content, 'html.parser')
-        download_button = apk_soup.find('a', {'class': 'downloadButton'})
+
+        # Find the download button
+        download_button = apk_soup.find('a', class_="downloadButton")  # Updated selector
         if download_button and 'href' in download_button.attrs:
             return "https://www.apkmirror.com" + download_button['href']
     return None
